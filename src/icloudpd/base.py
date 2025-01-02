@@ -488,6 +488,10 @@ CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
     is_flag=True,
 )
 @click.option(
+    "--preserve-album",
+    help="If --delete-after-download is set, photos in this album will not be deleted from iCloud",
+)
+@click.option(
     "--domain",
     help="What iCloud root domain to use. Use 'cn' for mainland China (default: 'com')",
     type=click.Choice(["com", "cn"]),
@@ -1170,6 +1174,7 @@ def core(
     no_progress_bar: bool,
     notification_script: Optional[str],
     delete_after_download: bool,
+    preserve_album: Optional[str],
     domain: str,
     logger: logging.Logger,
     watch_interval: Optional[int],
@@ -1343,6 +1348,19 @@ def core(
             )
             photos_counter = 0
 
+            try:
+                preserve_album_obj = (
+                    library_object.albums[preserve_album] if preserve_album else None
+                )
+                preserve_album_photo_ids = (
+                    {photo.id for photo in preserve_album_obj} if preserve_album_obj else set()
+                )
+            except KeyError:
+                logger.warning(
+                    "Preserved album %s not found",
+                    preserve_album,
+                )
+                preserve_album_photo_ids = set()
             photos_iterator = iter(photos_enumerator)
             while True:
                 try:
@@ -1354,13 +1372,23 @@ def core(
                         break
                     item = next(photos_iterator)
                     if download_photo(consecutive_files_found, item) and delete_after_download:
-                        delete_local = partial(
-                            delete_photo_dry_run if dry_run else delete_photo,
-                            logger,
-                            icloud.photos,
-                            library_object,
-                            item,
-                        )
+                        should_delete = True
+                        if preserve_album and item.id in preserve_album_photo_ids:
+                            logger.info(
+                                "Skipping deletion of %s because it's in album %s",
+                                item.filename,
+                                preserve_album,
+                            )
+                            should_delete = False
+
+                        if should_delete:
+                            delete_local = partial(
+                                delete_photo_dry_run if dry_run else delete_photo,
+                                logger,
+                                icloud.photos,
+                                library_object,
+                                item,
+                            )
 
                         retrier(delete_local, error_handler)
 
