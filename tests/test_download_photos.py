@@ -15,7 +15,6 @@ from click.testing import CliRunner
 from piexif._exceptions import InvalidImageDataError
 from requests import Response
 from requests.exceptions import ConnectionError
-from tzlocal import get_localzone
 from vcr import VCR
 
 from icloudpd import constants
