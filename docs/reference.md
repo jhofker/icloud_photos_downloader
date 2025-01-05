@@ -193,6 +193,11 @@ This is a list of all options available for command line interface (CLI) of the 
     
 :   If specified along with `--delete-after-download`, assets downloaded locally will not be deleted in iCloud if they were created within the specified number of days.
 
+(preserve-album-parameter)=
+`--preserve-album X`
+    
+:   If specified along with `--delete-after-download`, assets downloaded locally will not be deleted in iCloud if they are in the specified album. Overrides `--keep-recent-days` if the assets are in the specified album.
+
 (only-print-filenames-parameter)=
 `--only-print-filenames`
     
