@@ -15,6 +15,7 @@ from click.testing import CliRunner
 from piexif._exceptions import InvalidImageDataError
 from requests import Response
 from requests.exceptions import ConnectionError
+from tzlocal import get_localzone
 from vcr import VCR
 
 from icloudpd import constants
@@ -1451,6 +1452,57 @@ class DownloadPhotoTestCase(TestCase):
         self.assertIn("INFO     All photos have been downloaded", self._caplog.text)
         # TODO assert cass.all_played
         assert result.exit_code == 0
+
+    def test_delete_after_download_keep_recent_days(self) -> None:
+        base_dir = os.path.join(self.fixtures_path, inspect.stack()[0][3])
+
+        files_to_download = [("2018/07/31", "IMG_7409.JPG")]
+
+        with mock.patch.object(piexif, "insert") as piexif_patched:
+            piexif_patched.side_effect = InvalidImageDataError
+            with mock.patch("icloudpd.exif_datetime.get_photo_exif") as get_exif_patched:
+                get_exif_patched.return_value = False
+                with mock.patch("datetime.datetime", wraps=datetime.datetime) as dt_mock:
+                    mock_now = datetime.datetime(2018, 8, 2, tzinfo=datetime.timezone.utc)
+                    dt_mock.now.return_value = mock_now
+                    data_dir, result = run_icloudpd_test(
+                        self.assertEqual,
+                        self.root_path,
+                        base_dir,
+                        "listing_photos_keep_recent_days.yml",
+                        [],
+                        files_to_download,
+                        [
+                            "--username",
+                            "jdoe@gmail.com",
+                            "--password",
+                            "password1",
+                            "--recent",
+                            "1",
+                            "--skip-videos",
+                            "--skip-live-photos",
+                            "--no-progress-bar",
+                            "--threads-num",
+                            "1",
+                            "--delete-after-download",
+                            "--keep-recent-days",
+                            "5",
+                        ],
+                    )
+
+                    self.assertIn(
+                        "DEBUG    Looking up all photos from album All Photos...", self._caplog.text
+                    )
+                    self.assertIn(
+                        f"INFO     Downloading the first original photo to {data_dir} ...",
+                        self._caplog.text,
+                    )
+                    self.assertIn(
+                        "DEBUG    Skipping deletion of IMG_7409.JPG as it is within the keep_recent_days period (1 days old)",
+                        self._caplog.text,
+                    )
+                    self.assertIn("INFO     All photos have been downloaded", self._caplog.text)
+                    assert result.exit_code == 0
 
     def test_download_over_old_original_photos(self) -> None:
         base_dir = os.path.join(self.fixtures_path, inspect.stack()[0][3])
