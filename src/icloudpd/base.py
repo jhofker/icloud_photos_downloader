@@ -610,6 +610,7 @@ def main(
     notification_script: Optional[str],
     threads_num: int,
     delete_after_download: bool,
+    preserve_album: Optional[str],
     domain: str,
     watch_with_interval: Optional[int],
     dry_run: bool,
@@ -721,6 +722,7 @@ def main(
             notification_script=notification_script,
             threads_num=threads_num,
             delete_after_download=delete_after_download,
+            preserve_album=preserve_album,
             domain=domain,
             watch_with_interval=watch_with_interval,
             dry_run=dry_run,
@@ -796,6 +798,7 @@ def main(
             no_progress_bar,
             notification_script,
             delete_after_download,
+            preserve_album,
             domain,
             logger,
             watch_with_interval,
@@ -1356,11 +1359,13 @@ def core(
                     {photo.id for photo in preserve_album_obj} if preserve_album_obj else set()
                 )
             except KeyError:
-                logger.warning(
-                    "Preserved album %s not found",
-                    preserve_album,
-                )
+                if preserve_album:
+                    logger.warning(
+                        "Preserved album %s not found",
+                        preserve_album,
+                    )
                 preserve_album_photo_ids = set()
+
             photos_iterator = iter(photos_enumerator)
             while True:
                 try:
@@ -1390,7 +1395,7 @@ def core(
                                 item,
                             )
 
-                        retrier(delete_local, error_handler)
+                            retrier(delete_local, error_handler)
 
                     photos_counter += 1
                     status_exchange.get_progress().photos_counter = photos_counter
