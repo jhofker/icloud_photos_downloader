@@ -1387,8 +1387,7 @@ def core(
                         break
                     item = next(photos_iterator)
                     if download_photo(consecutive_files_found, item) and delete_after_download:
-                        # Check if the photo is within the keep_recent_days period
-                        should_skip_delete = False
+                        should_delete = True
                         if keep_recent_days is not None:
                             try:
                                 now = datetime.datetime.now(get_localzone())
@@ -1401,15 +1400,13 @@ def core(
                                         item.filename,
                                         age_days,
                                     )
-                                    should_skip_delete = True
+                                    should_delete = False
                             except (ValueError, OSError):
                                 logger.error(
                                     "Could not convert photo created date to local timezone (%s)",
                                     item.created,
                                 )
 
-                        if not should_skip_delete:
-                            should_delete = True
                         if preserve_album and item.id in preserve_album_photo_ids:
                             logger.info(
                                 "Skipping deletion of %s because it's in album %s",
@@ -1420,14 +1417,13 @@ def core(
 
                         if should_delete:
                             delete_local = partial(
-                                    delete_photo_dry_run if dry_run else delete_photo,
-                                    logger,
-                                    icloud.photos,
-                                    library_object,
-                                    item,
-                                )
+                                delete_photo_dry_run if dry_run else delete_photo,
+                                logger,
+                                icloud.photos,
+                                library_object,
+                                item,
+                            )
 
-                            retrier(delete_local, error_handler)
                             retrier(delete_local, error_handler)
 
                     photos_counter += 1
