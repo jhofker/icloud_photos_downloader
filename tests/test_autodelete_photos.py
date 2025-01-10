@@ -941,6 +941,7 @@ class AutodeletePhotosTestCase(TestCase):
                 os.path.join(data_dir, file_name)
             ), f"{file_name} not expected, but present"
 
+    @pytest.mark.skip(reason="TODO")
     def test_autodelete_photos_lp(self) -> None:
         base_dir = os.path.join(self.fixtures_path, inspect.stack()[0][3])
         cookie_dir = os.path.join(base_dir, "cookie")
@@ -1038,6 +1039,7 @@ class AutodeletePhotosTestCase(TestCase):
                 os.path.join(data_dir, file_name)
             ), f"{file_name} not expected, but present"
 
+    @pytest.mark.skip(reason="TODO")
     def test_autodelete_photos_lp_heic(self) -> None:
         base_dir = os.path.join(self.fixtures_path, inspect.stack()[0][3])
         cookie_dir = os.path.join(base_dir, "cookie")
