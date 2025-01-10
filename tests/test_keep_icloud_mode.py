@@ -251,3 +251,96 @@ class KeepICloudModeTestCases(TestCase):
             )
             self.assertIn("INFO     All photos have been downloaded", self._caplog.text)
             assert result.exit_code == 0
+
+    def test_download_after_delete_with_preserve_album(self) -> None:
+        base_dir = os.path.join(self.fixtures_path, inspect.stack()[0][3])
+
+        files_to_download = [("2018/07/31", "IMG_7409.JPG")]
+
+        with mock.patch("icloudpd.exif_datetime.get_photo_exif") as get_exif_patched:
+            get_exif_patched.return_value = False
+            data_dir, result = run_icloudpd_test(
+                self.assertEqual,
+                self.root_path,
+                base_dir,
+                "listing_photos_with_keep_icloud_album.yml",
+                [],
+                files_to_download,
+                [
+                    "--username",
+                    "jdoe@gmail.com",
+                    "--password",
+                    "password1",
+                    "--recent",
+                    "1",
+                    "--skip-videos",
+                    "--skip-live-photos",
+                    "--no-progress-bar",
+                    "--threads-num",
+                    "1",
+                    "--delete-after-download",
+                    "--keep-icloud-album",
+                    "Vacation",
+                ],
+            )
+
+            self.assertIn(
+                "DEBUG    Looking up all photos from album All Photos...", self._caplog.text
+            )
+            self.assertIn(
+                f"INFO     Downloading the first original photo to {data_dir} ...",
+                self._caplog.text,
+            )
+            self.assertIn(
+                "INFO     Skipping deletion of IMG_7409.JPG because it's in album Vacation",
+                self._caplog.text,
+            )
+            self.assertIn("INFO     All photos have been downloaded", self._caplog.text)
+            assert result.exit_code == 0
+
+    def test_download_after_delete_with_nonexistent_preserve_album(self) -> None:
+        base_dir = os.path.join(self.fixtures_path, inspect.stack()[0][3])
+
+        files_to_download = [("2018/07/31", "IMG_7409.JPG")]
+
+        with mock.patch("icloudpd.exif_datetime.get_photo_exif") as get_exif_patched:
+            get_exif_patched.return_value = False
+            data_dir, result = run_icloudpd_test(
+                self.assertEqual,
+                self.root_path,
+                base_dir,
+                "listing_photos_with_nonexistent_keep_icloud_album.yml",
+                [],
+                files_to_download,
+                [
+                    "--username",
+                    "jdoe@gmail.com",
+                    "--password",
+                    "password1",
+                    "--recent",
+                    "1",
+                    "--skip-videos",
+                    "--skip-live-photos",
+                    "--no-progress-bar",
+                    "--threads-num",
+                    "1",
+                    "--delete-after-download",
+                    "--keep-icloud-album",
+                    "NonexistentAlbum",
+                ],
+            )
+
+            self.assertIn(
+                "DEBUG    Looking up all photos from album All Photos...", self._caplog.text
+            )
+            self.assertIn(
+                f"INFO     Downloading the first original photo to {data_dir} ...",
+                self._caplog.text,
+            )
+            self.assertIn(
+                "WARNING  Preserved album NonexistentAlbum not found",
+                self._caplog.text,
+            )
+            self.assertIn("INFO     Deleted IMG_7409.JPG in iCloud", self._caplog.text)
+            self.assertIn("INFO     All photos have been downloaded", self._caplog.text)
+            assert result.exit_code == 0
