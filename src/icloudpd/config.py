@@ -40,8 +40,8 @@ class Config:
         notification_script: Optional[str],
         threads_num: int,
         delete_after_download: bool,
-        keep_recent_days: Optional[int],
-        preserve_album: Optional[str],
+        keep_icloud_recent_days: Optional[int],
+        keep_icloud_album: Optional[str],
         domain: str,
         watch_with_interval: Optional[int],
         dry_run: bool,
@@ -83,8 +83,8 @@ class Config:
         self.notification_script = notification_script
         self.threads_num = threads_num
         self.delete_after_download = delete_after_download
-        self.keep_recent_days = keep_recent_days
-        self.preserve_album = preserve_album
+        self.keep_icloud_recent_days = keep_icloud_recent_days
+        self.keep_icloud_album = keep_icloud_album
         self.domain = domain
         self.watch_with_interval = watch_with_interval
         self.dry_run = dry_run

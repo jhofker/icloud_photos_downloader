@@ -488,14 +488,16 @@ CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
     is_flag=True,
 )
 @click.option(
-    "--keep-recent-days",
-    help="When using --delete-after-download, do not delete photos newer than this many days",
+    "--keep-icloud-recent-days",
+    help="Keep photos newer than this many days in iCloud. Deletes the rest. "
+    + "If set to 0, all photos will be deleted from iCloud.",
     type=click.IntRange(0),
-    default=0,
+    default=None,
 )
 @click.option(
-    "--preserve-album",
-    help="If --delete-after-download is set, photos in this album will not be deleted from iCloud",
+    "--keep-icloud-album",
+    help="If --keep-icloud-recent-days is set, photos in this album will not be deleted from iCloud",
+    default=None,
 )
 @click.option(
     "--domain",
@@ -616,8 +618,8 @@ def main(
     notification_script: Optional[str],
     threads_num: int,
     delete_after_download: bool,
-    keep_recent_days: Optional[int],
-    preserve_album: Optional[str],
+    keep_icloud_recent_days: Optional[int],
+    keep_icloud_album: Optional[str],
     domain: str,
     watch_with_interval: Optional[int],
     dry_run: bool,
@@ -660,6 +662,12 @@ def main(
 
         if auto_delete and delete_after_download:
             print("--auto-delete and --delete-after-download are mutually exclusive")
+            sys.exit(2)
+
+        if keep_icloud_recent_days and delete_after_download:
+            print(
+                "--keep-icloud-recent-days and --delete-after-download should not be used together."
+            )
             sys.exit(2)
 
         if watch_with_interval and (list_albums or only_print_filenames):  # pragma: no cover
@@ -729,8 +737,8 @@ def main(
             notification_script=notification_script,
             threads_num=threads_num,
             delete_after_download=delete_after_download,
-            keep_recent_days=keep_recent_days,
-            preserve_album=preserve_album,
+            keep_icloud_recent_days=keep_icloud_recent_days,
+            keep_icloud_album=keep_icloud_album,
             domain=domain,
             watch_with_interval=watch_with_interval,
             dry_run=dry_run,
@@ -806,8 +814,8 @@ def main(
             no_progress_bar,
             notification_script,
             delete_after_download,
-            keep_recent_days,
-            preserve_album,
+            keep_icloud_recent_days,
+            keep_icloud_album,
             domain,
             logger,
             watch_with_interval,
@@ -1186,8 +1194,8 @@ def core(
     no_progress_bar: bool,
     notification_script: Optional[str],
     delete_after_download: bool,
-    keep_recent_days: Optional[int],
-    preserve_album: Optional[str],
+    keep_icloud_recent_days: Optional[int],
+    keep_icloud_album: Optional[str],
     domain: str,
     logger: logging.Logger,
     watch_interval: Optional[int],
@@ -1452,6 +1460,40 @@ def core(
                 autodelete_photos(
                     logger, dry_run, library_object, folder_structure, directory, primary_sizes
                 )
+
+            if keep_icloud_recent_days is not None:
+                try:
+                    now = datetime.datetime.now(get_localzone())
+                    created_date = item.created.astimezone(get_localzone())
+                    age_days = (now - created_date).days
+                    if age_days < keep_icloud_recent_days:
+                        logger.debug(
+                            "Skipping deletion of %s as it is within the keep_icloud_recent_days period (%d days old)",
+                            item.filename,
+                            age_days,
+                        )
+                    else:
+                        delete_local = partial(
+                            delete_photo_dry_run if dry_run else delete_photo,
+                            logger,
+                            icloud.photos,
+                            library_object,
+                            item,
+                        )
+
+                        retrier(delete_local, error_handler)
+                        logger.debug(
+                            "Deleted %s as it is older than the keep_icloud_recent_days period (%d days old)",
+                            item.filename,
+                            age_days,
+                        )
+                except (ValueError, OSError):
+                    logger.error(
+                        "Could not convert photo created date to local timezone (%s)",
+                        item.created,
+                    )
+                except Exception as e:
+                    logger.error(f"Error deleting photo: {e}")
 
             if watch_interval:  # pragma: no cover
                 logger.info(f"Waiting for {watch_interval} sec...")
